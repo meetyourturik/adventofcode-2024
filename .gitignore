@@ -1,0 +1,8 @@
+.idea
+build
+out
+libs
+*.txt
+target
+*.iml
+Test.kt
