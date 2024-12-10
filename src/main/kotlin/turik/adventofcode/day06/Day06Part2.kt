@@ -1,82 +1,48 @@
 import java.io.File
 
+var LINES: List<String> = listOf()
 var HEIGHT = -1
 var WIDTH = -1
-var START = Pair(-1, -1)
-var LINES: List<String> = listOf()
-val COURSORS = listOf('^', '>', 'v', '<')
+
+val COURSORS = mapOf(
+    '^' to Pair(-1, 0),
+    '>' to Pair(0, 1),
+    'v' to Pair(1, 0),
+    '<' to Pair(0, -1)
+)
+
+fun nextDir(dir: Pair<Int, Int>): Pair<Int, Int> {
+    val curpos = COURSORS.values.indexOf(dir)
+    return COURSORS.values.toList()[(curpos+1) % 4]
+}
+
 val BLOCK = '#'
-val VISITED = mutableSetOf<Triple<Int, Int, Int>>()
 
-fun nextDir(d: Int): Int = (d+1) % 4
+fun inField(pos: Pair<Int, Int>): Boolean {
+    return pos.first in 0 until HEIGHT && pos.second in 0 until WIDTH
+}
 
-fun checkObstacle(curr: Triple<Int, Int, Int>, vis: MutableSet<Triple<Int, Int, Int>>): Boolean {
-    if ((curr.third == 0 && curr.first == 0) ||
-        (curr.third == 1 && curr.second == WIDTH - 1) ||
-        (curr.third == 2 && curr.first == HEIGHT - 1) ||
-        (curr.third == 3 && curr.second == 0)
-    ) { // trying to place an obstacle over the edge
-        return false
-    }
-    /*
-    if (vis.contains(curr)) {
-        return true
-    }
-     */
 
-    val dir = nextDir(curr.third)
+fun checkObstacleCycle(possibleBlock: Pair<Int, Int>, visited: MutableSet<Triple<Int, Int, Pair<Int, Int>>>, posInc: Triple<Int, Int, Pair<Int, Int>>): Boolean {
+    var posTriple = Triple(posInc.first, posInc.second, posInc.third)
+    val visitedCurr = mutableSetOf<Triple<Int, Int, Pair<Int, Int>>>()
+    visitedCurr.addAll(visited)
 
-    //vis.add(curr)
-    //vis.add(Triple(curr.first, curr.second, dir))
-
-    when (curr.third) {
-        0 -> {
-            for (i in curr.second until WIDTH-1) {
-                if (i > curr.second && vis.contains(Triple(curr.first, i, dir))) {
-                    return true
-                }
-                if (LINES[curr.first][i+1] == BLOCK) {
-                    return checkObstacle(Triple(curr.first, i, dir), vis)
-                }
-                vis.add(Triple(curr.first, i, dir))
-            }
+    while (true) {
+        if (visitedCurr.contains(posTriple)) {
+            return true
         }
-        1 -> {
-            for (i in curr.first until HEIGHT-1) {
-                if (i > curr.first && vis.contains(Triple(i, curr.second, dir))) {
-                    return true
-                }
-                if (LINES[i+1][curr.second] == BLOCK) {
-                    return checkObstacle(Triple(i, curr.second, dir), vis)
-                }
-                vis.add(Triple(i, curr.second, dir))
-            }
+        visitedCurr.add(posTriple)
+        val nextPos = Pair(posTriple.first + posTriple.third.first, posTriple.second + posTriple.third.second)
+        if (!inField(nextPos)) {
+            return false
         }
-        2 -> {
-            for (i in curr.second downTo  1) {
-                if (i < curr.second && vis.contains(Triple(curr.first, i, dir))) {
-                    return true
-                }
-                if (LINES[curr.first][i-1] == BLOCK) {
-                    return checkObstacle(Triple(curr.first, i, dir), vis)
-                }
-                vis.add(Triple(curr.first, i, dir))
-            }
-        }
-        3 -> {
-            for (i in curr.first downTo 1) {
-                if (i < curr.first && vis.contains(Triple(i, curr.second, dir))) {
-                    return true
-                }
-                if (LINES[i-1][curr.second] == BLOCK) {
-                    return checkObstacle(Triple(i, curr.second, dir), vis)
-                }
-                vis.add(Triple(i, curr.second, dir))
-            }
+        if (LINES[nextPos.first][nextPos.second] == BLOCK || possibleBlock.equals(nextPos)) {
+            posTriple = Triple(posTriple.first, posTriple.second, nextDir(posTriple.third))
+        } else {
+            posTriple = Triple(nextPos.first, nextPos.second, posTriple.third)
         }
     }
-
-    return false
 }
 
 fun main() {
@@ -86,80 +52,50 @@ fun main() {
         LINES = reader.lines().toList()
     }
 
-    var pos = Triple(-1, -1, -1) // (line, column, dir)
-    /*  0
-        ^
-     3< . >1
-        v
-        2
-    */
-    var dir = -1
+    var pos = Pair(-1, -1)
+    var START = Pair(-1, -1)
+    var dir = Pair(-100, -100)
 
-    for (i in 0 until LINES.size) {
-        for (j in 0 until LINES[i].length) {
+    HEIGHT = LINES.size
+    WIDTH = LINES[0].length
+
+    for (i in 0 until HEIGHT) {
+        for (j in 0 until WIDTH) {
             if (LINES[i][j] in COURSORS) {
-                dir = COURSORS.indexOf(LINES[i][j])
-                pos = Triple(i, j, dir)
                 START = Pair(i, j)
+                pos = Pair(i, j)
+                dir = COURSORS.get(LINES[i][j])!!
                 break
             }
         }
     }
 
-    HEIGHT = LINES.size
-    WIDTH = LINES[0].length
+    val visited = mutableSetOf<Triple<Int, Int, Pair<Int, Int>>>()
 
-    var res = 0
+    val res = mutableSetOf<Pair<Int, Int>>()
 
-    while (pos.first >= 0 && pos.first < HEIGHT && pos.first >= 0 && pos.second < WIDTH) {
-        if (dir == 0) { // going UP
-            while (pos.first >= 0 && (pos.first < 1 || LINES[pos.first - 1][pos.second] != BLOCK)) {
-                val visitedTmp = mutableSetOf<Triple<Int, Int, Int>>()
-                visitedTmp.addAll(VISITED)
-                if (!START.equals(Pair(pos.first - 1, pos.second)) && checkObstacle(pos, visitedTmp)) {
-                    println(pos)
-                    res++
-                }
-                VISITED.add(pos)
-                pos = Triple(pos.first - 1, pos.second, dir)
+    while (inField(pos)) {
+        val nextDir = nextDir(dir)
+        while (
+            inField(pos) // within the field
+            &&
+            (LINES.getOrElse(pos.first + dir.first, { _ -> "-"}).getOrElse(pos.second + dir.second, { _ -> '-'}) != BLOCK) // next step isn't block
+        ) {
+            var posTriple = Triple(pos.first, pos.second, dir)
+            visited.add(posTriple)
+
+            val possibleBlock = Pair(pos.first + dir.first, pos.second + dir.second)
+
+            posTriple = Triple(pos.first, pos.second, nextDir)
+            if (inField(possibleBlock) && !START.equals(possibleBlock) && LINES[possibleBlock.first][possibleBlock.second] != BLOCK && checkObstacleCycle(possibleBlock, visited, posTriple)) {
+                res.add(possibleBlock)
             }
-        } else if (dir == 1) { // going RIGHT
-            while (pos.second < WIDTH && (pos.second > WIDTH-2 || LINES[pos.first][pos.second + 1] != BLOCK)) {
-                val visitedTmp = mutableSetOf<Triple<Int, Int, Int>>()
-                visitedTmp.addAll(VISITED)
-                if (!START.equals(Pair(pos.first, pos.second + 1)) && checkObstacle(pos, visitedTmp)) {
-                    println(pos)
-                    res++
-                }
-                VISITED.add(pos)
-                pos = Triple(pos.first, pos.second + 1, dir)
-            }
-        } else if (dir == 2) { // going DOWN
-            while (pos.first < HEIGHT && (pos.first > HEIGHT-2 || LINES[pos.first + 1][pos.second] != BLOCK)) {
-                val visitedTmp = mutableSetOf<Triple<Int, Int, Int>>()
-                visitedTmp.addAll(VISITED)
-                if (!START.equals(Pair(pos.first + 1, pos.second)) && checkObstacle(pos, visitedTmp)) {
-                    println(pos)
-                    res++
-                }
-                VISITED.add(pos)
-                pos = Triple(pos.first + 1, pos.second, dir)
-            }
-        } else { // going LEFT
-            while (pos.second >= 0 && (pos.second < 1 || LINES[pos.first][pos.second - 1] != BLOCK)) {
-                val visitedTmp = mutableSetOf<Triple<Int, Int, Int>>()
-                visitedTmp.addAll(VISITED)
-                if (!START.equals(Pair(pos.first, pos.second - 1)) && checkObstacle(pos, visitedTmp)) {
-                    println(pos)
-                    res++
-                }
-                VISITED.add(pos)
-                pos = Triple(pos.first, pos.second - 1, dir)
-            }
+            pos = possibleBlock
         }
-        dir = nextDir(dir)
-        //VISITED.add(Triple(pos.first, pos.second, dir))
+        dir = nextDir
     }
 
-    println(res)
+    println(res.size)
 }
+
+// aiming for 2162
