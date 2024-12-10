@@ -1,5 +1,7 @@
 import java.io.File
 
+fun Pair<Int, Int>.path() = '[' + this.first.toString() + ":" + this.second + ']'
+
 fun main() {
     val file = File("inputs/day10.txt")
 
@@ -19,35 +21,34 @@ fun main() {
         }
     }
 
-    val mem = mutableMapOf<Pair<Int, Int>, MutableSet<Pair<Int, Int>>>()
-
-    fun countTrails(pos: Pair<Int, Int>, h: Int, summits: MutableSet<Pair<Int, Int>>) {
+    fun countTrails(pos: Pair<Int, Int>, h: Int, trails: MutableSet<String>, path: String) {
+        val np = path + pos.path()
         if (h == 9) {
-            summits.add(pos)
+            trails.add(np)
         }
         val nh = h+1
         if (lines.getOrElse(pos.first - 1, { "" }).getOrElse(pos.second, { 'j' } )- '0' == nh) {
-            countTrails(Pair(pos.first - 1, pos.second), nh, summits)
+            countTrails(Pair(pos.first - 1, pos.second), nh, trails, np)
         }
         if (lines.getOrElse(pos.first, { "" }).getOrElse(pos.second + 1, { 'j' } )- '0' == nh) {
-            countTrails(Pair(pos.first, pos.second + 1), nh, summits)
+            countTrails(Pair(pos.first, pos.second + 1), nh, trails, np)
         }
         if (lines.getOrElse(pos.first + 1, { "" }).getOrElse(pos.second, { 'j' } )- '0' == nh) {
-            countTrails(Pair(pos.first + 1, pos.second), nh, summits)
+            countTrails(Pair(pos.first + 1, pos.second), nh, trails, np)
         }
         if (lines.getOrElse(pos.first, { "" }).getOrElse(pos.second - 1, { 'j' } )- '0' == nh) {
-            countTrails(Pair(pos.first, pos.second - 1), nh, summits)
+            countTrails(Pair(pos.first, pos.second - 1), nh, trails, np)
         }
     }
 
     var res = 0
 
     for (th in trailheads) {
-        val ss = mutableSetOf<Pair<Int, Int>>()
-        countTrails(th, 0, ss)
-        val count = ss.size
-        res += count
+        val tr = mutableSetOf<String>()
+        countTrails(th, 0, tr, "")
+        res += tr.size
     }
 
     println(res)
 }
+

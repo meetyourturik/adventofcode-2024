@@ -1,4 +1,5 @@
 import java.io.File
+import kotlin.system.exitProcess
 
 var LINES: List<String> = listOf()
 var HEIGHT = -1
@@ -23,24 +24,25 @@ fun inField(pos: Pair<Int, Int>): Boolean {
 }
 
 
-fun checkObstacleCycle(possibleBlock: Pair<Int, Int>, visited: MutableSet<Triple<Int, Int, Pair<Int, Int>>>, posInc: Triple<Int, Int, Pair<Int, Int>>): Boolean {
-    var posTriple = Triple(posInc.first, posInc.second, posInc.third)
-    val visitedCurr = mutableSetOf<Triple<Int, Int, Pair<Int, Int>>>()
+fun checkObstacleCycle(possibleBlock: Pair<Int, Int>, visited: MutableSet<Pair<Pair<Int, Int>, Pair<Int, Int>>>, posInc: Pair<Pair<Int, Int>, Pair<Int, Int>>): Boolean {
+    var posWdir = posInc
+    val visitedCurr = mutableSetOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
     visitedCurr.addAll(visited)
 
     while (true) {
-        if (visitedCurr.contains(posTriple)) {
+        if (visitedCurr.contains(posWdir)) {
             return true
         }
-        visitedCurr.add(posTriple)
-        val nextPos = Pair(posTriple.first + posTriple.third.first, posTriple.second + posTriple.third.second)
+        visitedCurr.add(posWdir)
+        val (pos, dir) = posWdir
+        val nextPos = Pair(pos.first + dir.first, pos.second + dir.second)
         if (!inField(nextPos)) {
             return false
         }
         if (LINES[nextPos.first][nextPos.second] == BLOCK || possibleBlock.equals(nextPos)) {
-            posTriple = Triple(posTriple.first, posTriple.second, nextDir(posTriple.third))
+            posWdir = Pair(pos, nextDir(dir))
         } else {
-            posTriple = Triple(nextPos.first, nextPos.second, posTriple.third)
+            posWdir = Pair(nextPos, dir)
         }
     }
 }
@@ -70,7 +72,7 @@ fun main() {
         }
     }
 
-    val visited = mutableSetOf<Triple<Int, Int, Pair<Int, Int>>>()
+    val visited = mutableSetOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
 
     val res = mutableSetOf<Pair<Int, Int>>()
 
@@ -81,17 +83,16 @@ fun main() {
             &&
             (LINES.getOrElse(pos.first + dir.first, { _ -> "-"}).getOrElse(pos.second + dir.second, { _ -> '-'}) != BLOCK) // next step isn't block
         ) {
-            var posTriple = Triple(pos.first, pos.second, dir)
-            visited.add(posTriple)
-
+            visited.add(Pair(pos, dir))
             val possibleBlock = Pair(pos.first + dir.first, pos.second + dir.second)
 
-            posTriple = Triple(pos.first, pos.second, nextDir)
-            if (inField(possibleBlock) && !START.equals(possibleBlock) && LINES[possibleBlock.first][possibleBlock.second] != BLOCK && checkObstacleCycle(possibleBlock, visited, posTriple)) {
+            if (inField(possibleBlock) && !START.equals(possibleBlock) && LINES[possibleBlock.first][possibleBlock.second] != BLOCK && checkObstacleCycle(possibleBlock, visited, Pair(pos, nextDir))) {
                 res.add(possibleBlock)
             }
             pos = possibleBlock
         }
+
+        visited.add(Pair(pos, dir))
         dir = nextDir
     }
 
