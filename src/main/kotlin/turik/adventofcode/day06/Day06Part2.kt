@@ -1,9 +1,8 @@
 import java.io.File
-import kotlin.system.exitProcess
 
 var LINES: List<String> = listOf()
-var HEIGHT = -1
-var WIDTH = -1
+var HEIGHT = -1 .. -1
+var WIDTH = -1 .. -1
 
 val COURSORS = mapOf(
     '^' to Pair(-1, 0),
@@ -17,33 +16,33 @@ fun nextDir(dir: Pair<Int, Int>): Pair<Int, Int> {
     return COURSORS.values.toList()[(curpos+1) % 4]
 }
 
-val BLOCK = '#'
+val BLOCK: Char = '#'
 
 fun inField(pos: Pair<Int, Int>): Boolean {
-    return pos.first in 0 until HEIGHT && pos.second in 0 until WIDTH
+    return pos.first in HEIGHT && pos.second in WIDTH
 }
 
 
-fun checkObstacleCycle(possibleBlock: Pair<Int, Int>, visited: MutableSet<Pair<Pair<Int, Int>, Pair<Int, Int>>>, posInc: Pair<Pair<Int, Int>, Pair<Int, Int>>): Boolean {
+fun checkObstacleCycle(possibleBlock: Pair<Int, Int>, visited: Set<Pair<Pair<Int, Int>, Pair<Int, Int>>>, posInc: Pair<Pair<Int, Int>, Pair<Int, Int>>): Boolean {
     var posWdir = posInc
-    val visitedCurr = mutableSetOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
-    visitedCurr.addAll(visited)
+    val visitedCurr = visited.toMutableSet()
 
     while (true) {
         if (visitedCurr.contains(posWdir)) {
             return true
         }
         visitedCurr.add(posWdir)
-        val (pos, dir) = posWdir
+        var (pos, dir) = posWdir
         val nextPos = Pair(pos.first + dir.first, pos.second + dir.second)
         if (!inField(nextPos)) {
             return false
         }
-        if (LINES[nextPos.first][nextPos.second] == BLOCK || possibleBlock.equals(nextPos)) {
-            posWdir = Pair(pos, nextDir(dir))
+        if (nextPos.equals(possibleBlock) || LINES[nextPos.first][nextPos.second] == BLOCK) {
+            dir = nextDir(dir)
         } else {
-            posWdir = Pair(nextPos, dir)
+            pos = nextPos
         }
+        posWdir = Pair(pos, dir)
     }
 }
 
@@ -58,12 +57,12 @@ fun main() {
     var START = Pair(-1, -1)
     var dir = Pair(-100, -100)
 
-    HEIGHT = LINES.size
-    WIDTH = LINES[0].length
+    HEIGHT = 0 until LINES.size
+    WIDTH = 0 until LINES[0].length
 
-    for (i in 0 until HEIGHT) {
-        for (j in 0 until WIDTH) {
-            if (LINES[i][j] in COURSORS) {
+    for (i in HEIGHT) {
+        for (j in WIDTH) {
+            if (LINES[i][j] in COURSORS.keys) {
                 START = Pair(i, j)
                 pos = Pair(i, j)
                 dir = COURSORS.get(LINES[i][j])!!
@@ -73,30 +72,32 @@ fun main() {
     }
 
     val visited = mutableSetOf<Pair<Pair<Int, Int>, Pair<Int, Int>>>()
-
     val res = mutableSetOf<Pair<Int, Int>>()
 
-    while (inField(pos)) {
-        val nextDir = nextDir(dir)
-        while (
-            inField(pos) // within the field
-            &&
-            (LINES.getOrElse(pos.first + dir.first, { _ -> "-"}).getOrElse(pos.second + dir.second, { _ -> '-'}) != BLOCK) // next step isn't block
-        ) {
-            visited.add(Pair(pos, dir))
-            val possibleBlock = Pair(pos.first + dir.first, pos.second + dir.second)
+    while (true) {
+        visited.add(Pair(pos, dir))
 
-            if (inField(possibleBlock) && !START.equals(possibleBlock) && LINES[possibleBlock.first][possibleBlock.second] != BLOCK && checkObstacleCycle(possibleBlock, visited, Pair(pos, nextDir))) {
-                res.add(possibleBlock)
-            }
-            pos = possibleBlock
+        val nextDir = nextDir(dir)
+        val nextPos = Pair(pos.first + dir.first, pos.second + dir.second)
+
+        if (!inField(nextPos)) {
+            break
         }
 
-        visited.add(Pair(pos, dir))
-        dir = nextDir
+        if (!START.equals(nextPos)
+            && !visited.map { it.first }.contains(nextPos)
+            && LINES[nextPos.first][nextPos.second] != BLOCK
+            && checkObstacleCycle(nextPos, visited, Pair(pos, nextDir))
+        ) {
+            res.add(nextPos)
+        }
+
+        if (LINES[nextPos.first][nextPos.second] == BLOCK) {
+            dir = nextDir
+        } else {
+            pos = nextPos
+        }
     }
 
     println(res.size)
 }
-
-// aiming for 2162
